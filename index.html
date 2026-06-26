@@ -298,7 +298,7 @@
         <button class="mode active" data-mode="beginner">Principiante</button>
         <button class="mode" data-mode="advanced">Avanzado</button>
       </div>
-      <footer-note style="margin-top:8px" id="modeNote">Principiante: solo lo esencial (régimen, velocidad, llenado y bolas). Cambia a Avanzado para tamaño de partícula, revestimiento, densidades y propiedades de contacto.</footer-note>
+      <footer-note style="margin-top:8px" id="modeNote">Principiante: (régimen, velocidad, llenado y bolas). Avanzado: (tamaño de partícula, revestimiento, densidades y propiedades de contacto.)</footer-note>
     </div>
 
     <div class="card">
@@ -324,7 +324,7 @@
       <div class="ctrl">
         <div class="row"><span>Llenado de bolas Jb (% del molino)</span><span class="val" id="vBalls">15 %</span></div>
         <input type="range" id="sBalls" min="0" max="30" step="1" value="15">
-        <footer-note style="margin-top:2px">Fracción volumétrica de bolas respecto al molino (convención industrial). Es parte de la carga, no se suma aparte: el mineral ocupa el resto (Jc − Jb). Si subes Jb por encima de Jc, se limita a Jc.</footer-note>
+        <footer-note style="margin-top:2px">Fracción volumétrica de bolas respecto al molino.  Si subes Jb por encima de Jc, se limita a Jc.</footer-note>
       </div>
       <div class="ctrl adv">
         <div class="row"><span>Tamaño de partícula</span><span class="val" id="vSize">100 %</span></div>
@@ -419,11 +419,8 @@
       <div class="chart-label">Espectro de energía de impactos (log E)</div>
       <canvas class="chart" id="chartImpact"></canvas>
       <div class="chart-label" style="margin-top:10px; line-height:1.45">
-        <span style="color:#ff5a3c; font-weight:600">Impactos críticos</span> (HUD, destellos sobre el casco):
-        bolas que caen <b>fuera del pie</b> y golpean el revestimiento desnudo. Son los choques
-        de mayor energía y los que más dañan el revestimiento y consumen bolas. Suben en catarata
-        y, sobre todo, con el molino <b>poco cargado</b> (más casco expuesto). El objetivo operativo
-        es que la catarata aterrice sobre el pie de carga, no sobre la pared.
+        <span style="color:#ff5a3c; font-weight:600">Impactos críticos</span> :
+        bolas que caen <b>fuera del pie</b> y golpean el revestimiento desnudo.
       </div>
     </div>
 
@@ -439,6 +436,7 @@
         Molino de D = 8 m. Velocidad crítica N<sub>c</sub> = 42.3/√D ≈ 15 rpm.
         Partículas a escala ~10x para visualización en tiempo real;
         La potencia se estima del torque de reacción sobre el casco: P = τ·ω.
+        Visualización referencial para explicar conceptos de molienda SAG, no es un modelo de predicción del desempeño.
       </footer-note>
     </div>
 
