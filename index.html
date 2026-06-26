@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Simulador DEM — Molino SAG</title>
+<title>Simulador educativo DEM — Molino SAG</title>
 <style>
   :root {
     --bg: #0d1117;
@@ -38,6 +38,8 @@
   header h1 { font-size: 17px; font-weight: 600; }
   header h1 span { color: var(--accent); }
   header .sub { font-size: 12px; color: var(--muted); }
+  header .sub a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
+  header .sub a:hover { border-bottom-color: var(--accent); }
   #main {
     flex: 1;
     display: flex;
@@ -154,6 +156,10 @@
   button.primary:hover { background: #ffb061; }
   button.preset { flex: 1 1 45%; }
   button.preset.active { border-color: var(--accent); color: var(--accent); }
+  button.mode { flex: 1; }
+  button.mode.active { background: var(--accent2); color: #04141d; border-color: var(--accent2); font-weight: 600; }
+  /* En modo principiante se ocultan los controles marcados como avanzados. */
+  body.mode-beginner .adv { display: none; }
   select {
     width: 100%;
     background: #232b3b;
@@ -212,8 +218,8 @@
 <body>
 
 <header>
-  <h1>Simulador DEM <span>· Molino SAG</span></h1>
-  <div class="sub">Método de Elementos Discretos — sección transversal · contacto resorte-amortiguador + fricción de Coulomb</div>
+  <h1>Simulador educativo DEM <span>· Molino SAG</span></h1>
+  <div class="sub"> sección transversal de un molino - Autor: <a href="https://www.linkedin.com/in/lplazaalvarez/" target="_blank" rel="noopener">Luis Plaza A.</a> (<a href="https://github.com/luchoplaza" target="_blank" rel="noopener">@luchoplaza</a>)</div>
 </header>
 
 <div id="main">
@@ -229,12 +235,22 @@
       <div class="hud-item"><div class="v accent" id="hudRpm">0.0</div><div class="l">rpm</div></div>
       <div class="hud-item"><div class="v" id="hudNc">0 %</div><div class="l">% vel. crítica</div></div>
       <div class="hud-item"><div class="v blue" id="hudPower">0</div><div class="l">potencia kW/m</div></div>
+      <div class="hud-item"><div class="v" id="hudCoM">0.0 m</div><div class="l">desplaz. centro masa</div></div>
       <div class="hud-item"><div class="v" id="hudN">0</div><div class="l">partículas</div></div>
       <div class="hud-item"><div class="v" id="hudFps">60</div><div class="l">fps</div></div>
     </div>
   </div>
 
   <div id="panel">
+
+    <div class="card">
+      <h2>Modo de uso</h2>
+      <div class="btn-row">
+        <button class="mode active" data-mode="beginner">Principiante</button>
+        <button class="mode" data-mode="advanced">Avanzado</button>
+      </div>
+      <footer-note style="margin-top:8px" id="modeNote">Principiante: solo lo esencial (régimen, velocidad, llenado y bolas). Cambia a Avanzado para tamaño de partícula, revestimiento, densidades y propiedades de contacto.</footer-note>
+    </div>
 
     <div class="card">
       <h2>Presets de régimen</h2>
@@ -250,56 +266,20 @@
       <h2>Variables de operación</h2>
       <div class="ctrl">
         <div class="row"><span>Velocidad (% crítica)</span><span class="val" id="vSpeed">72 %</span></div>
-        <input type="range" id="sSpeed" min="20" max="130" step="1" value="72">
+        <input type="range" id="sSpeed" min="0" max="130" step="1" value="72">
       </div>
       <div class="ctrl">
-        <div class="row"><span>Nivel de llenado J</span><span class="val" id="vFill">30 %</span></div>
+        <div class="row"><span>Nivel de llenado Jc</span><span class="val" id="vFill">30 %</span></div>
         <input type="range" id="sFill" min="10" max="45" step="1" value="30">
       </div>
       <div class="ctrl">
-        <div class="row"><span>Carga de bolas (% de carga)</span><span class="val" id="vBalls">15 %</span></div>
-        <input type="range" id="sBalls" min="0" max="40" step="1" value="15">
+        <div class="row"><span>Llenado de bolas Jb (% del molino)</span><span class="val" id="vBalls">15 %</span></div>
+        <input type="range" id="sBalls" min="0" max="30" step="1" value="15">
+        <footer-note style="margin-top:2px">Fracción volumétrica de bolas respecto al molino (convención industrial). Es parte de la carga, no se suma aparte: el mineral ocupa el resto (Jc − Jb). Si subes Jb por encima de Jc, se limita a Jc.</footer-note>
       </div>
-      <div class="ctrl">
+      <div class="ctrl adv">
         <div class="row"><span>Tamaño de partícula</span><span class="val" id="vSize">100 %</span></div>
         <input type="range" id="sSize" min="70" max="160" step="5" value="100">
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Revestimiento (lifters)</h2>
-      <div class="ctrl">
-        <div class="row"><span>Número de lifters</span><span class="val" id="vLifters">16</span></div>
-        <input type="range" id="sLifters" min="0" max="36" step="2" value="16">
-      </div>
-      <div class="ctrl">
-        <div class="row"><span>Altura de lifter</span><span class="val" id="vLiftH">0.35 m</span></div>
-        <input type="range" id="sLiftH" min="0.10" max="0.70" step="0.05" value="0.35">
-      </div>
-      <div class="ctrl">
-        <div class="row"><span>Desgaste acelerado</span><span class="val" id="vWear">Apagado</span></div>
-        <input type="range" id="sWear" min="0" max="500" step="25" value="0">
-      </div>
-      <div class="ctrl">
-        <div class="row"><span>Desgaste medio · máx</span><span class="val" id="vWearAvg">0 % · 0 %</span></div>
-      </div>
-      <div class="chart-label">Perfil de desgaste por lifter</div>
-      <canvas class="chart" id="chartWear" style="height:36px"></canvas>
-      <div class="chart-label" id="wearNote" style="display:none; margin-top:8px; line-height:1.45"></div>
-      <div class="btn-row" style="margin-top:10px">
-        <button id="btnRelining" style="flex:1">🔧 Cambiar revestimiento</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Propiedades de contacto</h2>
-      <div class="ctrl">
-        <div class="row"><span>Fricción μ</span><span class="val" id="vMu">0.50</span></div>
-        <input type="range" id="sMu" min="0.05" max="0.9" step="0.05" value="0.5">
-      </div>
-      <div class="ctrl">
-        <div class="row"><span>Restitución e</span><span class="val" id="vRest">0.30</span></div>
-        <input type="range" id="sRest" min="0.05" max="0.8" step="0.05" value="0.3">
       </div>
     </div>
 
@@ -325,11 +305,66 @@
         <span>Hombro y pie de carga</span>
         <label class="switch"><input type="checkbox" id="tShoulder" checked><span class="slider-t"></span></label>
       </div>
+      <div class="toggle-row">
+        <span>Centro de masa de la carga</span>
+        <label class="switch"><input type="checkbox" id="tCoM" checked><span class="slider-t"></span></label>
+      </div>
       <div class="legend" id="legend"></div>
     </div>
 
+    <div class="card adv">
+      <h2>Densidades de material</h2>
+      <div class="ctrl">
+        <div class="row"><span>Densidad del mineral</span><span class="val" id="vRhoOre">2700 kg/m³</span></div>
+        <input type="range" id="sRhoOre" min="2000" max="4500" step="50" value="2700">
+      </div>
+      <div class="ctrl">
+        <div class="row"><span>Densidad de las bolas</span><span class="val" id="vRhoBall">7800 kg/m³</span></div>
+        <input type="range" id="sRhoBall" min="5000" max="8500" step="50" value="7800">
+      </div>
+      <footer-note style="margin-top:2px">Una mayor diferencia de densidad acentúa la segregación bola/mineral y mueve el centro de masa: las bolas pesadas dominan la posición del riñón.</footer-note>
+    </div>
+
+    <div class="card adv">
+      <h2>Revestimiento (lifters)</h2>
+      <div class="ctrl">
+        <div class="row"><span>Número de lifters</span><span class="val" id="vLifters">16</span></div>
+        <input type="range" id="sLifters" min="0" max="36" step="2" value="16">
+      </div>
+      <div class="ctrl">
+        <div class="row"><span>Altura de lifter</span><span class="val" id="vLiftH">0.35 m</span></div>
+        <input type="range" id="sLiftH" min="0.10" max="0.70" step="0.05" value="0.35">
+      </div>
+      <div class="ctrl">
+        <div class="row"><span>Desgaste acelerado</span><span class="val" id="vWear">Apagado</span></div>
+        <input type="range" id="sWear" min="0" max="500" step="25" value="0">
+      </div>
+      <div class="ctrl">
+        <div class="row"><span>Desgaste medio / máx</span><span class="val" id="vWearAvg">0 % · 0 %</span></div>
+      </div>
+      <div class="chart-label">Perfil de desgaste por lifter</div>
+      <canvas class="chart" id="chartWear" style="height:36px"></canvas>
+      <div class="chart-label" id="wearNote" style="display:none; margin-top:8px; line-height:1.45"></div>
+      <div class="btn-row" style="margin-top:10px">
+        <button id="btnRelining" style="flex:1">🔧 Cambiar revestimiento</button>
+      </div>
+    </div>
+
+    <div class="card adv">
+      <h2>Propiedades de contacto</h2>
+      <div class="ctrl">
+        <div class="row"><span>Fricción μ</span><span class="val" id="vMu">0.10</span></div>
+        <input type="range" id="sMu" min="0.05" max="0.9" step="0.05" value="0.1">
+      </div>
+      <div class="ctrl">
+        <div class="row"><span>Restitución ("rebote") e</span><span class="val" id="vRest">0.30</span></div>
+        <input type="range" id="sRest" min="0.05" max="0.8" step="0.05" value="0.3">
+      </div>
+    </div>
+
+
     <div class="card">
-      <h2>Telemetría</h2>
+      <h2>Gráficos</h2>
       <div class="chart-label">Potencia consumida (kW por metro de largo)</div>
       <canvas class="chart" id="chartPower"></canvas>
       <div class="chart-label">Espectro de energía de impactos (log E)</div>
@@ -346,9 +381,7 @@
     <div class="card">
       <footer-note>
         Molino de D = 8 m. Velocidad crítica N<sub>c</sub> = 42.3/√D ≈ 15 rpm.
-        Partículas a escala exagerada (~10×) para visualización en tiempo real;
-        la física de contacto (resorte-amortiguador lineal, fricción de Coulomb,
-        integración semi-implícita con sub-pasos) es la misma que en un DEM industrial.
+        Partículas a escala ~10x para visualización en tiempo real;
         La potencia se estima del torque de reacción sobre el casco: P = τ·ω.
       </footer-note>
     </div>
@@ -388,13 +421,15 @@ const WEAR_BALL_F = 2.5; // acero sobre acero desgasta más que el mineral
 const state = {
   speedPct: 72,        // % de velocidad crítica
   fillPct: 30,         // J, % del área del molino
-  ballPct: 15,         // % de la carga que son bolas de acero
+  ballPct: 15,         // Jb: llenado de bolas, % volumétrico del molino (⊆ fillPct)
   sizePct: 100,
+  rhoOre: RHO_ORE,     // densidad del mineral (kg/m3), editable en modo avanzado
+  rhoBall: RHO_STEEL,  // densidad de las bolas (kg/m3)
   nLifters: 16,
   liftH: 0.35,
   wearMult: 0,                              // 0 = desgaste apagado
   lifterWear: new Float32Array(MAX_LIFTERS), // fracción de altura perdida por lifter
-  mu: 0.5,
+  mu: 0.1,
   rest: 0.3,
   theta: 0,            // ángulo del casco
   paused: false,
@@ -402,6 +437,8 @@ const state = {
   trails: false,
   vectors: false,
   shoulderToe: true,
+  showCoM: true,
+  advanced: false,
   torqueEMA: 0,
   powerHist: [],
   impactBins: new Float32Array(24),
@@ -414,6 +451,21 @@ function omega() { return state.speedPct / 100 * MILL.omegaC; }
 let N = 0;
 let px, py, vx, vy, rad, mass, isBall, impactHeat;
 let trailBuf = [];   // trayectorias de un subconjunto
+let comTrail = [];   // rastro del centro de masa de la carga
+let lastCoM = null;  // último centro de masa calculado {x, y}
+
+// centro de masa de la carga (ponderado por masa). Su desplazamiento desde el
+// eje del molino es el brazo de palanca que genera el torque ⇒ la potencia.
+function centerOfMass() {
+  let mx = 0, my = 0, mt = 0;
+  for (let i = 0; i < N; i++) {
+    mx += px[i] * mass[i];
+    my += py[i] * mass[i];
+    mt += mass[i];
+  }
+  if (mt === 0) return null;
+  return { x: mx / mt, y: my / mt };
+}
 
 function buildCharge() {
   const R = MILL.R;
@@ -421,17 +473,32 @@ function buildCharge() {
   const rOre = BASE_ORE_R * sizeF;
   const rBall = rOre * 1.45;
 
-  // área objetivo de carga
-  const targetArea = state.fillPct / 100 * Math.PI * R * R;
-  const packing = 0.80;
+  // Llenados como fracción volumétrica (área en 2D) respecto al molino — convención
+  // industrial: Jc = llenado total de carga, Jb = llenado de bolas (subconjunto de la
+  // carga). El mineral ocupa el resto: Jo = Jc − Jb. Todo en % del área del molino.
+  const millArea = Math.PI * R * R;
+  const packing = 0.80;                                  // sólido / envolvente del lecho
+  const Jc = state.fillPct / 100;
+  const Jb = Math.min(state.ballPct, state.fillPct) / 100; // bolas ⊆ carga
+  const Jo = Math.max(0, Jc - Jb);                         // mineral = resto de la carga
 
-  // estimar N resolviendo mezcla de áreas
-  const fBall = state.ballPct / 100;
   const aOre = Math.PI * rOre * rOre;
   const aBall = Math.PI * rBall * rBall;
-  const aMean = (1 - fBall) * aOre + fBall * aBall;
-  let n = Math.floor(targetArea * packing / aMean);
-  n = Math.min(n, 2600); // tope de rendimiento
+
+  // Número objetivo por especie = área sólida de esa especie / área de partícula.
+  // Área sólida = packing · (fracción volumétrica) · área del molino.
+  let nBall = Math.round(packing * Jb * millArea / aBall);
+  let nOre  = Math.round(packing * Jo * millArea / aOre);
+  let n = nBall + nOre;
+  if (n > 2600) {                       // tope de rendimiento: escalar preservando la mezcla
+    const s = 2600 / n;
+    nBall = Math.floor(nBall * s);
+    nOre  = Math.floor(nOre * s);
+    n = nBall + nOre;
+  }
+  // Fracción POR CONTEO derivada del objetivo volumétrico (las bolas son mayores y más
+  // densas, así que su % por conteo es menor que su % volumétrico Jb).
+  const fBall = n > 0 ? nBall / n : 0;
 
   N = n;
   px = new Float32Array(N); py = new Float32Array(N);
@@ -457,7 +524,7 @@ function buildCharge() {
       py[i] = y + (Math.random() - 0.5) * cell * 0.3;
       vx[i] = 0; vy[i] = 0;
       rad[i] = r;
-      mass[i] = (ball ? RHO_STEEL : RHO_ORE) * Math.PI * r * r;
+      mass[i] = (ball ? state.rhoBall : state.rhoOre) * Math.PI * r * r;
       isBall[i] = ball ? 1 : 0;
       i++;
     }
@@ -473,6 +540,7 @@ function buildCharge() {
   state.impactBins.fill(0);
   state.powerHist = [];
   state.torqueEMA = 0;
+  comTrail = [];
   document.getElementById("hudN").textContent = N;
 }
 
@@ -489,9 +557,12 @@ function dampingCoef(e, mEff) {
 
 function recordImpact(E) {
   if (E < 0.5) return;
-  // bins log10(E) de -0.3 a 4.5 J
+  // bins log10(E) de -0.3 a 4.5 J; se acumula la ENERGÍA del impacto (no el
+  // conteo): cada bin muestra energía disipada total, así la cola de catarata
+  // (pocos golpes pero de muchos J) pesa lo que debe y no la aplastan los
+  // miles de choquecitos de la cama. Dónde se gasta la molienda.
   const b = Math.floor((Math.log10(E) + 0.3) / 4.8 * 24);
-  if (b >= 0 && b < 24) state.impactBins[b] += 1;
+  if (b >= 0 && b < 24) state.impactBins[b] += E;
 }
 
 function physicsStep(dt) {
@@ -829,6 +900,43 @@ function draw() {
     }
   }
 
+  // centro de masa de la carga (con rastro y brazo de palanca)
+  if (state.showCoM && lastCoM) {
+    // rastro: muestra cómo migra el riñón al cambiar el régimen
+    if (comTrail.length > 1) {
+      ctx.strokeStyle = "rgba(110,224,122,0.45)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let p = 0; p < comTrail.length; p++) {
+        const [sx, sy] = W2S(comTrail[p][0], comTrail[p][1]);
+        if (p === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+    }
+    // brazo de palanca: del eje del molino al centro de masa
+    const [cx0, cy0] = W2S(0, 0);
+    const [cmx, cmy] = W2S(lastCoM.x, lastCoM.y);
+    ctx.strokeStyle = "rgba(110,224,122,0.55)";
+    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx0, cy0); ctx.lineTo(cmx, cmy); ctx.stroke();
+    ctx.setLineDash([]);
+    // marcador (disco verde con cruz)
+    ctx.fillStyle = "#6ee07a";
+    ctx.strokeStyle = "#0d1117";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cmx, cmy, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cmx - 3.2, cmy); ctx.lineTo(cmx + 3.2, cmy);
+    ctx.moveTo(cmx, cmy - 3.2); ctx.lineTo(cmx, cmy + 3.2);
+    ctx.stroke();
+    ctx.fillStyle = "#6ee07a";
+    ctx.font = "11px Segoe UI";
+    ctx.textAlign = "left";
+    ctx.fillText("centro de masa", cmx + 9, cmy + 4);
+  }
+
   // flecha de rotación
   ctx.strokeStyle = "rgba(255,159,67,0.7)";
   ctx.lineWidth = 2.5;
@@ -984,22 +1092,22 @@ function updateWearUI() {
   } else if (avg < 0.7) {
     note.textContent = "Desgaste medio: el hombro cae y la catarata se acorta — menos fractura por impacto (mira el espectro). El molino sigue consumiendo potencia, pero muele peor.";
   } else {
-    note.textContent = "Lifters casi planos: la carga desliza contra el casco como en el preset Deslizamiento. Potencia consumida sin molienda útil — hora de cambiar el revestimiento.";
+    note.textContent = "Lifters casi planos: la carga desliza contra el casco. Potencia consumida sin molienda útil — hora de cambiar el revestimiento.";
   }
 }
 
 // ---------- Régimen ----------
 const REGIMES = [
   { max: 50, t: "Deslizamiento / cascada incipiente",
-    d: "La carga apenas se eleva y resbala contra el casco. Molienda pobre: predomina la abrasión de baja energía. Sube la velocidad o agrega lifters más altos." },
+    d: "La carga resbala contra el casco y apenas se eleva. Predomina la abrasión de baja energía. Sube la velocidad o agrega lifters más altos." },
   { max: 70, t: "Cascada",
-    d: "La carga sube hasta el hombro y rueda sobre sí misma. Predomina la molienda por abrasión y atrición — buena para producto fino, menor desgaste de revestimiento." },
+    d: "La carga sube hasta el hombro y rueda sobre sí misma. Predomina la molienda por abrasión y desgaste — buena para producto fino, menor desgaste de revestimiento." },
   { max: 90, t: "Catarata",
-    d: "Las partículas son lanzadas en vuelo libre e impactan en el pie de la carga. Predomina la fractura por impacto — ideal para SAG. Cuida que los impactos caigan sobre la carga y no sobre el revestimiento." },
+    d: "Las partículas son lanzadas en vuelo libre e impactan en el pie de la carga. Predomina la fractura por impacto. La idea es cuidar que los impactos caigan sobre la carga y no sobre el revestimiento." },
   { max: 100, t: "Catarata extrema → riesgo de impacto en revestimiento",
-    d: "Las trayectorias de vuelo se alargan y los impactos comienzan a golpear el casco desnudo: daño acelerado de revestimiento y consumo de bolas. Observa el espectro de impactos." },
+    d: "La carga se proyecta mas lejos y los impactos comienzan a golpear el casco desnudo: daño acelerado de revestimiento y consumo de bolas." },
   { max: 999, t: "Centrifugado",
-    d: "Sobre la velocidad crítica: la fuerza centrífuga adhiere la carga al casco y la molienda se detiene. El molino consume potencia sin moler. Reduce la velocidad bajo el 100% de Nc." },
+    d: "Sobre la velocidad crítica: la fuerza centrífuga adhiere la carga al casco y la molienda se detiene. El molino consume potencia sin moler." },
 ];
 
 function updateRegime() {
@@ -1026,6 +1134,8 @@ bindSlider("sSpeed", "vSpeed", v => v + " %", "speedPct", false);
 bindSlider("sFill", "vFill", v => v + " %", "fillPct", true);
 bindSlider("sBalls", "vBalls", v => v + " %", "ballPct", true);
 bindSlider("sSize", "vSize", v => v + " %", "sizePct", true);
+bindSlider("sRhoOre", "vRhoOre", v => v + " kg/m³", "rhoOre", true);
+bindSlider("sRhoBall", "vRhoBall", v => v + " kg/m³", "rhoBall", true);
 bindSlider("sLifters", "vLifters", v => v, "nLifters", false);
 bindSlider("sLiftH", "vLiftH", v => v.toFixed(2) + " m", "liftH", false);
 bindSlider("sWear", "vWear", v => v === 0 ? "Apagado" : "×" + v, "wearMult", false);
@@ -1042,6 +1152,20 @@ document.getElementById("tTrails").addEventListener("change", e => {
 });
 document.getElementById("tVectors").addEventListener("change", e => state.vectors = e.target.checked);
 document.getElementById("tShoulder").addEventListener("change", e => state.shoulderToe = e.target.checked);
+document.getElementById("tCoM").addEventListener("change", e => {
+  state.showCoM = e.target.checked;
+  if (!state.showCoM) comTrail = [];
+});
+
+// modo principiante / avanzado: oculta o muestra los controles marcados .adv
+document.querySelectorAll("button.mode").forEach(btn => {
+  btn.addEventListener("click", () => {
+    state.advanced = btn.dataset.mode === "advanced";
+    document.body.classList.toggle("mode-beginner", !state.advanced);
+    document.querySelectorAll("button.mode").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
 
 document.getElementById("btnPause").addEventListener("click", function () {
   state.paused = !state.paused;
@@ -1111,8 +1235,14 @@ function loop(now) {
   fpsEMA += (1 / Math.max(dtFrame, 1e-3) - fpsEMA) * 0.05;
 
   if (!state.paused) {
-    const dt = dtFrame / SUBSTEPS;
-    for (let s = 0; s < SUBSTEPS; s++) physicsStep(dt);
+    // Paso de física FIJO y seguro: si un frame se atrasa (mover el mouse, GC,
+    // repintado…), corremos más substeps en vez de agrandar dt. Así el dt nunca
+    // supera el valor validado (~1.67 ms) y las partículas no estallan por
+    // inestabilidad del integrador explícito con KN alto.
+    const FIXED_DT = (1 / 60) / SUBSTEPS;
+    const nSub = Math.max(1, Math.ceil(dtFrame / FIXED_DT));
+    const dt = dtFrame / nSub;
+    for (let s = 0; s < nSub; s++) physicsStep(dt);
 
     // trayectorias
     if (state.trails) {
@@ -1120,6 +1250,13 @@ function loop(now) {
         tr.pts.push([px[tr.idx], py[tr.idx]]);
         if (tr.pts.length > 45) tr.pts.shift();
       }
+    }
+
+    // centro de masa de la carga + su rastro
+    lastCoM = centerOfMass();
+    if (lastCoM) {
+      comTrail.push([lastCoM.x, lastCoM.y]);
+      if (comTrail.length > 150) comTrail.shift();
     }
 
     // potencia
@@ -1141,12 +1278,20 @@ function loop(now) {
     drawImpactChart();
     drawWearChart();
     updateWearUI();
+    // HUD del centro de masa: distancia al eje y ángulo respecto de la vertical
+    // (atan2 con +x = lado ascendente del casco) ⇒ ángulo de reposo dinámico.
+    if (lastCoM) {
+      const off = Math.hypot(lastCoM.x, lastCoM.y);
+      const ang = Math.atan2(lastCoM.x, -lastCoM.y) * 180 / Math.PI;
+      document.getElementById("hudCoM").textContent = `${off.toFixed(2)} m · ${ang.toFixed(0)}°`;
+    }
     document.getElementById("hudFps").textContent = fpsEMA.toFixed(0);
   }
   requestAnimationFrame(loop);
 }
 
 // ---------- Inicio ----------
+document.body.classList.add("mode-beginner"); // arranca en modo principiante
 resize();
 buildCharge();
 updateRegime();
