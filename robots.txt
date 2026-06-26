@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://luchoplaza.github.io/DEM_SAG/sitemap.xml

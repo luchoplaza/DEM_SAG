@@ -3,7 +3,55 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Simulador educativo DEM — Molino SAG</title>
+<title>Simulador educativo DEM — Molino SAG | Regímenes de molienda</title>
+
+<!-- ===== SEO / indexabilidad ===== -->
+<meta name="description" content="Simulador interactivo DEM 2D de un molino SAG: visualiza los regímenes de molienda (deslizamiento, cascada, catarata, centrifugado), potencia consumida, carga de bolas (Jb/Jc) y desgaste del revestimiento. Herramienta educativa gratuita.">
+<meta name="keywords" content="molino SAG, simulador DEM, molienda, regímenes de molienda, cascada, catarata, centrifugado, mineral, procesamiento de minerales, metalurgia, educación">
+<meta name="author" content="Luis Plaza A.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#0d1117">
+<link rel="canonical" href="https://luchoplaza.github.io/DEM_SAG/">
+
+<!-- ===== Open Graph / redes sociales ===== -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Simulador educativo DEM — Molino SAG">
+<meta property="og:description" content="Simulador interactivo de un molino SAG: regímenes de molienda, potencia, carga de bolas y desgaste de revestimiento. Gratuito y sin instalación.">
+<meta property="og:url" content="https://luchoplaza.github.io/DEM_SAG/">
+<meta property="og:locale" content="es_ES">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Simulador educativo DEM — Molino SAG">
+<meta name="twitter:description" content="Simulador interactivo de un molino SAG: regímenes de molienda, potencia, carga de bolas y desgaste de revestimiento.">
+
+<!-- ===== Datos estructurados (Google) ===== -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Simulador educativo DEM — Molino SAG",
+  "url": "https://luchoplaza.github.io/DEM_SAG/",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Cualquiera (navegador web)",
+  "inLanguage": "es",
+  "isAccessibleForFree": true,
+  "description": "Simulador interactivo DEM 2D de un molino SAG para explicar visualmente los fenómenos de molienda. Audiencia: docencia y divulgación técnica.",
+  "author": { "@type": "Person", "name": "Luis Plaza A.", "url": "https://www.linkedin.com/in/lplazaalvarez/" },
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+
+<!-- ===== Google Analytics 4 =====
+     REEMPLAZA G- por tu ID de medición real (Admin > Flujos de datos en analytics.google.com).
+     Carga desde googletagmanager.com: es la única dependencia externa, sólo para analítica.
+     Si la página corre offline, gtag simplemente no se carga y el simulador sigue funcionando. -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-2VK65KVWNC"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-2VK65KVWNC');
+</script>
+
 <style>
   :root {
     --bg: #0d1117;
@@ -236,6 +284,7 @@
       <div class="hud-item"><div class="v" id="hudNc">0 %</div><div class="l">% vel. crítica</div></div>
       <div class="hud-item"><div class="v blue" id="hudPower">0</div><div class="l">potencia kW/m</div></div>
       <div class="hud-item"><div class="v" id="hudCoM">0.0 m</div><div class="l">desplaz. centro masa</div></div>
+      <div class="hud-item"><div class="v" id="hudCrit" style="color:#ff5a3c">0</div><div class="l">imp. críticos /s</div></div>
       <div class="hud-item"><div class="v" id="hudN">0</div><div class="l">partículas</div></div>
       <div class="hud-item"><div class="v" id="hudFps">60</div><div class="l">fps</div></div>
     </div>
@@ -369,6 +418,13 @@
       <canvas class="chart" id="chartPower"></canvas>
       <div class="chart-label">Espectro de energía de impactos (log E)</div>
       <canvas class="chart" id="chartImpact"></canvas>
+      <div class="chart-label" style="margin-top:10px; line-height:1.45">
+        <span style="color:#ff5a3c; font-weight:600">Impactos críticos</span> (HUD, destellos sobre el casco):
+        bolas que caen <b>fuera del pie</b> y golpean el revestimiento desnudo. Son los choques
+        de mayor energía y los que más dañan el revestimiento y consumen bolas. Suben en catarata
+        y, sobre todo, con el molino <b>poco cargado</b> (más casco expuesto). El objetivo operativo
+        es que la catarata aterrice sobre el pie de carga, no sobre la pared.
+      </div>
     </div>
 
     <div class="card">
@@ -417,6 +473,16 @@ const WEAR_K = 6e-11;
 const WEAR_IMP_F = 4;   // los impactos desgastan más que la abrasión, a igual trabajo
 const WEAR_BALL_F = 2.5; // acero sobre acero desgasta más que el mineral
 
+// Impactos críticos: bolas en vuelo (catarata) que golpean el casco DESNUDO,
+// es decir, caen fuera del pie de carga sin lecho de mineral que las amortigüe.
+// Son los choques de mayor energía (muy por encima de la abrasión) y los que más
+// dañan el revestimiento y consumen bolas. Una bola solo alcanza el casco con vn
+// alta si no había carga que la frenara en ese punto ⇒ el umbral de vn discrimina
+// la abrasión/contacto de soporte (vn≈0) del impacto balístico sobre la pared.
+const CRIT_VN = 4.0;      // m/s: velocidad normal mínima contra el casco para ser "crítico".
+// Alto a propósito: una bola que rueda/desliza pegada al casco tiene vn≈0 y NO debe
+// contar; solo la bola en vuelo balístico (catarata sobre pared desnuda) la supera.
+
 // ---------- Estado de simulación ----------
 const state = {
   speedPct: 72,        // % de velocidad crítica
@@ -442,6 +508,10 @@ const state = {
   torqueEMA: 0,
   powerHist: [],
   impactBins: new Float32Array(24),
+  // impactos críticos bola↔casco (catarata sobre revestimiento desnudo)
+  critRateEMA: 0,      // impactos críticos por segundo (suavizado)
+  critPowEMA: 0,       // potencia disipada sobre el casco por esos impactos (W/m)
+  critHits: [],        // marcadores recientes para el render {x, y, e, age}
   time: 0,
 };
 
@@ -540,6 +610,9 @@ function buildCharge() {
   state.impactBins.fill(0);
   state.powerHist = [];
   state.torqueEMA = 0;
+  state.critRateEMA = 0;
+  state.critPowEMA = 0;
+  state.critHits = [];
   comTrail = [];
   document.getElementById("hudN").textContent = N;
 }
@@ -571,6 +644,7 @@ function physicsStep(dt) {
   const mu = state.mu;
   const e = state.rest;
   let shellTorque = 0;
+  let critCountStep = 0, critEnergyStep = 0;   // impactos críticos acumulados en este dt
 
   // --- gravedad + integración de velocidad (semi-implícita) ---
   for (let i = 0; i < N; i++) vy[i] -= G * dt;
@@ -669,6 +743,14 @@ function physicsStep(dt) {
       // torque de reacción sobre el casco (negativo de fuerza sobre partícula)
       shellTorque += x * (-fy) - y * (-fx);
       if (vn > 0.4) recordImpact(0.5 * mass[i] * vn * vn * 0.5);
+      // impacto crítico: una BOLA llega al casco en vuelo (vn alta) ⇒ cayó fuera
+      // del pie, sobre revestimiento desnudo. Energía normal de impacto (J/m).
+      if (isBall[i] && vn > CRIT_VN) {
+        const Ec = 0.5 * mass[i] * vn * vn;
+        critCountStep++;
+        critEnergyStep += Ec;
+        state.critHits.push({ x, y, e: Ec, age: 0 });
+      }
     }
 
     // lifters: cápsulas radiales en el marco del molino
@@ -736,6 +818,16 @@ function physicsStep(dt) {
   state.time += dt;
   // potencia: el motor debe vencer -shellTorque (reacción de la carga)
   state.torqueEMA += ( -shellTorque - state.torqueEMA ) * Math.min(1, dt * 4);
+
+  // impactos críticos: tasa (1/s) y potencia (W/m) suavizadas (τ≈0.25 s, como el torque)
+  const a = Math.min(1, dt * 4);
+  state.critRateEMA += (critCountStep / dt - state.critRateEMA) * a;
+  state.critPowEMA  += (critEnergyStep / dt - state.critPowEMA) * a;
+  // envejecer y podar los marcadores visuales
+  if (state.critHits.length) {
+    for (const hh of state.critHits) hh.age += dt;
+    if (state.critHits.length > 240) state.critHits.splice(0, state.critHits.length - 240);
+  }
 }
 
 // ---------- Render ----------
@@ -873,6 +965,32 @@ function draw() {
       ctx.fillStyle = "rgba(255,255,255,0.25)";
       ctx.beginPath();
       ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // impactos críticos: marca sutil sobre el casco donde una bola golpeó el
+  // revestimiento desnudo (fuera del pie). Anillo tenue que se expande y
+  // desvanece (onda de choque), no un destello llamativo.
+  if (state.critHits.length) {
+    const FADE = 0.6; // s de vida visible
+    ctx.lineWidth = 1.4;
+    for (let k = state.critHits.length - 1; k >= 0; k--) {
+      const hh = state.critHits[k];
+      const life = 1 - hh.age / FADE;
+      if (life <= 0) { state.critHits.splice(k, 1); continue; }
+      // tamaño base según energía (log); el anillo crece al desvanecerse
+      const eR = 0.10 + 0.05 * Math.min(3, Math.log10(1 + hh.e));
+      const [hx, hy] = W2S(hh.x, hh.y);
+      const ringR = Math.max(2, eR * s) * (1 + 1.6 * (1 - life));
+      ctx.strokeStyle = `rgba(255,150,110,${0.4 * life})`;
+      ctx.beginPath();
+      ctx.arc(hx, hy, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+      // punto central muy tenue
+      ctx.fillStyle = `rgba(255,180,140,${0.35 * life})`;
+      ctx.beginPath();
+      ctx.arc(hx, hy, Math.max(1, eR * s * 0.5), 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -1225,6 +1343,28 @@ function updateHud() {
   document.getElementById("hudNc").textContent = state.speedPct + " %";
 }
 
+// ---------- Analítica de uso (Google Analytics 4) ----------
+// Registra qué controles toca el usuario. Sólo envía si gtag está cargado;
+// si la página corre offline, track() no hace nada y nada se rompe.
+function track(action, params) {
+  if (typeof window.gtag === "function") window.gtag("event", action, params || {});
+}
+document.querySelectorAll("button.preset").forEach(b =>
+  b.addEventListener("click", () => track("preset", { preset: b.dataset.preset })));
+document.querySelectorAll("button.mode").forEach(b =>
+  b.addEventListener("click", () => track("modo", { modo: b.dataset.mode })));
+[["btnPause", "pausar"], ["btnReset", "reiniciar_carga"], ["btnRelining", "cambiar_revestimiento"]]
+  .forEach(([id, name]) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", () => track("control", { control: name }));
+  });
+// Sliders y selects: registra al soltar el control (evento "change"), no en cada input.
+["sSpeed", "sFill", "sBalls", "sSize", "sLifters", "sLiftH", "sWear", "sMu", "sRest", "sRhoOre", "sRhoBall", "colorMode"]
+  .forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", () => track("ajuste", { control: id, valor: String(el.value) }));
+  });
+
 // ---------- Loop principal ----------
 let lastT = performance.now();
 let fpsEMA = 60, frameCount = 0, sampleAccum = 0;
@@ -1267,6 +1407,8 @@ function loop(now) {
       state.powerHist.push(P);
       if (state.powerHist.length > 220) state.powerHist.shift();
       document.getElementById("hudPower").textContent = P.toFixed(0);
+      const cr = state.critRateEMA;
+      document.getElementById("hudCrit").textContent = cr < 1 ? cr.toFixed(1) : cr.toFixed(0);
       // decaer histograma de impactos
       for (let i = 0; i < state.impactBins.length; i++) state.impactBins[i] *= 0.985;
     }
